@@ -1,0 +1,3 @@
+[submodule "dataset/SEC-bench"]
+	path = dataset/SEC-bench
+	url = https://huggingface.co/datasets/unsure123/SEC-bench

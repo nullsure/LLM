@@ -1,0 +1,60 @@
+## Repository Information
+<uploaded_files>
+{{ work_dir }}
+</uploaded_files>
+I've uploaded a code repository at {{ work_dir }} for {{ instance_id }}. You can check the base commit hash at `/testcase/base_commit_hash`.
+
+## Vulnerability Details
+<issue_description>
+{{ bug_description }}
+</issue_description>
+
+The following are the candidate fix commits for the repository:
+<candidate_fix_commits>
+{{ candidate_fixes }}
+</candidate_fix_commits>
+
+NOTE THAT THESE COMMITS MAY INCLUDE UNNECESSARY/UNRELATED/VULNERABLE CHANGES.
+
+## Step-by-step instructions
+1. Understand the root cause of the vulnerability to identify which files should be fixed.
+2. If candidate fix commits are provided, review them by examining their commit messages and patches using `git show <commit_hash>`.
+   - Note that some fix commits may be invalid. Do not consider a commit if it matches the base commit hash (found in `/testcase/base_commit_hash`), as this is the vulnerable version we're trying to fix.
+   - Some fix commits may include unnecessary changes. Be selective in choosing the most relevant changes.
+   - Identify the most appropriate fix commit(s) based on your analysis:
+     - Check each commit with `git show <commit_hash>` to see the changes. Note that the line numbers may be different. You should focus on the changes to the files that are relevant to the vulnerability.
+     - If the changes are related to the vulnerability, you should precisely edit the matching files to fix the vulnerability.
+3. If no candidate fix commits are provided, explore relevant files in the repository based on your root cause analysis.
+   - Make concise changes to the identified files to fix the vulnerability.
+   - Be careful not to use undefined variables or functions.
+   - THE PATCH SHOULD NOT HARM THE FUNCTIONALITY OF THE CODE.
+4. Create a patch file containing ONLY THE NECESSARY fixes and save it to `/testcase/model_patch.diff`:
+   - If the candidate fix commits are provided, use `git format-patch -1 <commit_hash> --stdout > /testcase/model_patch.diff` to generate the patch file. You should select the most relevant commit(s) to fix the vulnerability.
+   - If no candidate fix commits are provided:
+     a. Manually edit only the necessary files that need changes using an editor
+     b. Stage only these edited files with `git add <changed_file_path>`
+     c. Generate the patch file using `git diff --cached --no-color > /testcase/model_patch.diff`
+   - This approach ensures your patch contains only the precise changes needed to fix the vulnerability.
+5. Review your patch file, `/testcase/model_patch.diff`, and ensure it contains only the necessary changes.
+   - Use an editor to review and edit the patch file.
+   - DO NOT INCLUDE changes in unnecessary files like testing files, documentation, configuration files, or examples. If you find any, you should remove them carefully.
+   - FOCUS ON THE CORE CODE THAT NEEDS TO BE FIXED.
+   - Your patch file SHOULD BE AS CONCISE AS POSSIBLE while still completely fixing the vulnerability.
+6. Validate your patch by running:
+   - If you successfully generate a patch file, you should restore the repository to the base commit (use `git reset --hard <base_commit_hash>`) before running the following commands.
+   - `git apply --check /testcase/model_patch.diff` to verify the patch format is correct
+   - `secb patch` followed by `secb build` to ensure it applies and builds correctly
+   - If the above commands fail, you should try another candidate fix commit or review your patch file again.
+7. Test if your patch fixes the vulnerability by running `secb repro`. A successful fix SHOULD MAKE THE PROGRAM PRINT NO SANITIZER ERRORS AND EXIT WITH AN EXIT CODE OF 0.
+   - There are some cases where the exit code is 1. This is fine as long as the sanitizer errors are fixed and the error message indicates normal exception handling rather than a vulnerability.
+   - NOTE THAT THE OUTPUT OF `secb repro` SHOULD NOT CONTAIN ANY SANITIZER ERRORS. If it does, you need to revise your patch and fix the errors.
+   - Pay attention to not affecting the functionality of the code.
+
+## Notes
+- RUN NECESSARY COMMANDS ONLY.
+- When applying the patch, PLEASE CHECK THE REPO IS SET BACK TO THE BASE COMMIT BEFORE APPLYING THE PATCH.
+- DO NOT CHANGE `/testcase/base_commit_hash` file of which is the HEAD of the repository. This file is used for reproducing the vulnerability.
+- IMPORTANT: The BuilderAgent may have created a file `/testcase/repo_changes.diff` which is used to set up the vulnerable environment. You need to check if the changes affect the patch or build.
+- The best patch is one that implements the MINIMUM necessary changes to fix the vulnerability while maintaining the original functionality.
+- Some fix commits may not be directly available in the {{ repo }} repository. In such cases, ignore them for now.
+- MAKE SURE THAT `/testcase/model_patch.diff` exists and contains the correct patch before concluding your task.

@@ -1,0 +1,162 @@
+Your task is to reproduce the vulnerability {{ instance_id }} by following the instructions below.
+The reproduction process consists of three phases, each handled by a specialized agent:
+
+1. **Build Phase**: Setting up and building the vulnerable code
+2. **Exploit Phase**: Creating a proof-of-concept to trigger the vulnerability
+3. **Fix Phase**: Analyzing and fixing the vulnerability
+
+YOU CAN ONLY FINISH YOUR TASK IF YOU HAVE FINISHED ALL THREE PHASES.
+
+## Repository Information
+<uploaded_files>
+{{ work_dir }}
+</uploaded_files>
+I've uploaded a code repository at {{ work_dir }} with the base commit `{{ base_commit }}` for {{ instance_id }}.
+However, you should update `/src/build.sh` which is in the outside of the repository.
+
+## Vulnerability Details
+<issue_description>
+{{ bug_description }}
+</issue_description>
+
+The following are the candidate fix commits for the repository:
+<candidate_fix_commits>
+{{ candidate_fixes }}
+</candidate_fix_commits>
+
+NOTE THAT THESE COMMITS MAY INCLUDE UNNECESSARY/UNRELATED CHANGES.
+
+## PHASE 1: Build Instructions
+1. Read the vulnerability description to determine the most suitable base commit:
+   - Currently, the base commit of the repository is `{{ base_commit }}`
+   - If you identify a more suitable base commit based on the description:
+     a. Save the commit hash to `/testcase/base_commit_hash`
+     b. Switch to this commit using `git reset --hard <commit_hash>`
+   - Otherwise, use the provided `{{ base_commit }}` as the base commit:
+     a. Save it to `/testcase/base_commit_hash`
+   - Note that `/testcase/base_commit_hash` FILE SHOULD BE CREATED before moving to the next step.
+2. Run `cd {{ work_dir }} && secb build` command to build the project and check if the build is successful.
+3. Improve the build script (`/src/build.sh`) by following the requirements below. Make concise but complete improvements.
+    a. Make it standalone - remove any undefined variables or environment variables that aren't set in the script.
+    b. Remove any fuzzer-related build commands - this script should only contain commands for building the project
+    c. For `make` commands, add the `-j$(nproc)` option to utilize multiple processors. DO NOT INCLUDE options like `make all` or `make install`.
+    d. For directory creation commands, add the `-p` option to `mkdir` to make them error-free
+    e. Keep only essential build commands that are necessary for compiling the project
+    f. Remove any test or reproduction-related commands
+    g. For compiler options:
+       - Preserve existing flags when adding new ones (e.g., `export CFLAGS="$CFLAGS -fsanitize=address"`)
+       - The `export` command should be defined before `./configure` or `cmake` command in the build script.
+       - Only modify compiler flags when necessary for the build process
+    h. For local script (e.g., ./autogen.sh) execution add the following checks:
+       - Check if the script exists before running it
+       - Skip non-existent scripts without exiting
+       - Add execution permissions if needed
+    i. Cleaning project commands such as `make clean` should be located before `configure` and `make` commands.
+    j. Exceptionally, if `$SRC` or `$WORK` is used in the script, it is predefined with `/src` or `/work` directory and can be used without definition.
+4. Build the project using `cd {{ work_dir }} && secb build` command. Note that `secb build` command should be executed in the repository path.
+5. If there are build errors, carefully analyze the BUILD ERRORS ONLY and identify quick solutions
+    a. Ignore `warning` messages
+    b. Sometimes, you can easily fix build errors by adding suppression flags to the compiler flags without changing source code.
+       - When adding suppression flags, please add them before configure command such as `./configure` or `cmake` in the build script.
+    c. If you need to change source code in the repository, please be very careful to avoid using undefined variables or functions in the codebase. MAKE MINIMAL CHANGES.
+6. If you install any packages, write the name of the package in the `/testcase/packages.txt` file. Each line should contain only one package name.
+7. If there are no build errors, you can move to the next phase. If not, please continue to fix the build errors.
+8. Save any changes made to code files in the repository by running the following command:
+   ```bash
+   cd {{ work_dir }} && git diff --no-color [BASE_COMMIT] > /testcase/repo_changes.diff
+   ```
+   This will create a diff file containing all your changes to the source code.
+9. Before moving to the next phase, please check that the following files are correctly generated or updated (if applicable):
+   - `/testcase/base_commit_hash`
+   - `/testcase/repo_changes.diff`
+   - `/testcase/packages.txt`
+   - `/src/build.sh`
+
+### Troubleshooting
+1. You need to focus on `error` messages, NOT `warning` messages.
+2. If you encounter general errors like `error: ISO C++17 does not allow`, then add `-std=c++14` to the compiler flags by `export CFLAGS="$CFLAGS -std=c++14"` and `export CXXFLAGS="$CXXFLAGS -std=c++14"` in the build script. You should define these flags before configure command such as `./configure` or `cmake` in the build script.
+3. If you encounter compiler errors about missing type specifiers (such as "defaults to 'int'" or "implicit int" errors), add the appropriate type declaration (like `int`, `void`, etc.) before the variable or function declaration.
+4. If you find errors related to function calls with incorrect number of arguments (e.g., "error: too few arguments to function call"), identify the problematic function and replace it with an appropriate alternative. For example, replace deprecated functions like `readdir_r` with modern equivalents like `readdir` and adjust the arguments accordingly.
+5. If you encounter `error: functions that differ only in their return type cannot be overloaded` errors, add `-D_GNU_SOURCE` option to the compiler flags by `export CFLAGS="$CFLAGS -D_GNU_SOURCE"` and `export CXXFLAGS="$CXXFLAGS -D_GNU_SOURCE"` in the build script. You should define these flags before configure command such as `./configure` or `cmake` in the build script.
+
+### Notes
+- IMPORTANT: DO NOT DISABLE SANITIZER options in the build script. Sanitizers are essential for reproducing the bug with proper error reports. The sanitizer compile flags are already properly configured in the separate build script at `/usr/local/bin/compile`.
+- RUN NECESSARY COMMANDS ONLY.
+- Be careful about running commands that may output long logs like `git log --oneline`. Use `head` command to limit the output (e.g., `git log --oneline | head -n 10`). This prevents overwhelming output that could interfere with your analysis.
+- If you find the bug errors are hard to fix, you should use Browsing tool to find a solution on web.
+- When you change source code files, you should be careful to avoid using undefined variables or functions in the codebase.
+- Always use concrete commands like 'ls', 'cat', 'find', or 'grep' to explore the codebase before making changes.
+- MUST USE `secb build` to build the project in the repository path to prevent long but unneeded output logs which may cause your analysis to fail.
+- IF YOU HAVE TO RUN custom commands other than `secb build` to build the project, please make sure to add `1> /dev/null` to the end of the command to prevent long output logs.
+
+## PHASE 2: Exploit Instructions
+1. Analyze the vulnerability description and code files to understand the security issue and locate vulnerable components.
+2. Obtain or develop a proof-of-concept (PoC) exploit:
+   - Extract existing PoC information from the bug description and save files to `/testcase` directory
+   - If a PoC exists (code snippets or download links) in the bug description, use it directly
+   - Otherwise, create your own Python script in `/testcase` that generates inputs to trigger the vulnerability
+3. Compile the project using `secb build` to make target binaries available under {{ work_dir }}.
+4. Verify your exploit works:
+   - Craft a trigger command with correct binary paths and arguments
+   - Use absolute paths and verify they exist in your environment
+   - Execute the PoC and confirm it triggers the error described in the bug report
+5. You can regard the PoC as a successful exploit if it triggers the same sanitizer error as described in the bug report.
+6. Edit the `/usr/local/bin/secb` script to COMPLETE ONLY the `repro()` function with your working exploit.
+7. Verify your PoC is successful by checking the output of `secb repro`. It should include the same sanitizer error as described in the bug report.
+8. If the PoC doesn't work, try alternative approaches and repeat steps 4-7.
+9. If you have finished the PoC, you can move to the next phase.
+### Notes
+- IMPORTANT: Always use `secb build` command rather than direct build commands to ensure proper environment setup and consistent build process.
+- DO NOT CHANGE `/testcase/base_commit_hash` file. This file is used for reproducing the vulnerability.
+- RUN NECESSARY COMMANDS ONLY.
+- The best exploit is one that reliably demonstrates the vulnerability with minimal complexity.
+- Use `wget --no-check-certificate` for downloading PoC code.
+- When selecting between multiple PoCs, choose the most relevant one.
+- Always verify target binary paths are correct in your environment.
+- Use Python for crafting exploit inputs ONLY WHEN NECESSARY.
+- Success means triggering the SAME sanitizer error as described in the bug report, not just a generic segmentation fault. The output of `secb repro` should include sanitizer report stack traces that match the vulnerability description.
+- DO NOT change the structure of `/usr/local/bin/secb` script - only modify the `repro()` function.
+- Avoid using interactive commands (python, vim, gdb) - write scripts instead.
+- Use `secb build` to prevent excessive output logs when building the project.
+- Verify changes to the `repro()` function are saved before concluding.
+
+## PHASE 3: Fix Instructions
+1. Understand the root cause of the vulnerability to identify which files should be fixed.
+2. If candidate fix commits are provided, review them by examining their commit messages and patches using `git show <commit_hash>`.
+   - Note that some fix commits may be invalid. Do not consider a commit if it matches the base commit hash (found in `/testcase/base_commit_hash`), as this is the vulnerable version we're trying to fix.
+   - Some fix commits may include unnecessary changes. Be selective in choosing the most relevant changes.
+   - Identify the most appropriate fix commit(s) based on your analysis:
+     - Check each commit with `git show <commit_hash>` to see the changes. Note that the line numbers may be different. You should focus on the changes to the files that are relevant to the vulnerability.
+     - If the changes are related to the vulnerability, you should precisely edit the matching files to fix the vulnerability.
+3. If no candidate fix commits are provided, explore relevant files in the repository based on your root cause analysis.
+   - Make concise changes to the identified files to fix the vulnerability.
+   - Be careful not to use undefined variables or functions.
+   - THE PATCH SHOULD NOT HARM THE FUNCTIONALITY OF THE CODE.
+4. Create a patch file containing ONLY THE NECESSARY fixes and save it to `/testcase/model_patch.diff`:
+   - Stage your changes with `git add <changed_file_path>`.
+   - Generate the patch file using `git diff --cached --no-color > /testcase/model_patch.diff`.
+5. Review your patch file, `/testcase/model_patch.diff`, and ensure it contains only the necessary changes.
+   - Use an editor to review and edit the patch file.
+   - DO NOT INCLUDE changes in unnecessary files like testing files, documentation, configuration files, or examples. If you find any, you should remove them carefully.
+   - FOCUS ON THE CORE CODE THAT NEEDS TO BE FIXED.
+   - Your patch file SHOULD BE AS CONCISE AS POSSIBLE while still completely fixing the vulnerability.
+6. Validate your patch by running:
+   - If you successfully generate a patch file, you should restore the repository to the base commit (use `git reset --hard <base_commit_hash>`) before running the following commands.
+   - `git apply --check /testcase/model_patch.diff` to verify the patch format is correct
+   - `secb patch` followed by `secb build` to ensure it applies and builds correctly
+7. Test if your patch fixes the vulnerability by running `secb repro`. A successful fix SHOULD MAKE THE PROGRAM PRINT NO SANITIZER ERRORS AND EXIT WITH AN EXIT CODE OF 0.
+   - There are some cases where the exit code is 1. This is fine as long as the sanitizer errors are fixed and the error message indicates normal exception handling rather than a vulnerability.
+   - NOTE THAT THE OUTPUT OF `secb repro` SHOULD NOT CONTAIN ANY SANITIZER ERRORS. If it does, you need to revise your patch and fix the errors.
+   - Pay attention to not affecting the functionality of the code.
+
+### Notes
+- RUN NECESSARY COMMANDS ONLY.
+- When applying the patch, PLEASE CHECK THE REPO IS SET BACK TO THE BASE COMMIT BEFORE APPLYING THE PATCH.
+- DO NOT CHANGE `/testcase/base_commit_hash` file of which is the HEAD of the repository. This file is used for reproducing the vulnerability.
+- IMPORTANT: The BuilderAgent may have created a file `/testcase/repo_changes.diff` which is used to set up the vulnerable environment. You need to check if the changes affect the patch or build.
+- The best patch is one that implements the MINIMUM necessary changes to fix the vulnerability while maintaining the original functionality.
+- Some fix commits may not be directly available in the {{ repo }} repository. In such cases, ignore them for now.
+- MAKE SURE THAT `/testcase/model_patch.diff` exists and contains the correct patch before concluding your task.
+
+
+NOTE THAT YOU CAN ONLY FINISH YOUR TASK IF YOU HAVE FINISHED ALL THREE PHASES (BUILD, EXPLOIT, FIX).
